@@ -17,7 +17,7 @@ public:
     void setName(const QString& name);
     const QString& getName() const;
     const QString& getId() const;
-    QNetworkCookieJar* getCookieJar();
+    const QSharedPointer<QNetworkCookieJar> getCookieJar();
     bool isAuthorized() const;
 
 public slots:
@@ -39,5 +39,5 @@ private:
     QString m_clientId;
     bool m_authorized = false;
 
-    QNetworkCookieJar *m_cookieJar;
+    QSharedPointer<QNetworkCookieJar> m_cookieJar;
 };

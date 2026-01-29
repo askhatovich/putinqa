@@ -10,7 +10,7 @@ namespace {
 constexpr auto MAX_RECONNECTS = 30;
 }
 
-WebSocketConnection::WebSocketConnection(QNetworkCookieJar *cookieJar, const QUrl& url, QObject *parent)
+WebSocketConnection::WebSocketConnection(const QSharedPointer<QNetworkCookieJar> cookieJar, const QUrl& url, QObject *parent)
     : QObject{parent}
     , m_ws(new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this))
     , m_url(url)
@@ -58,7 +58,10 @@ void WebSocketConnection::sendBinary(const QByteArray &data)
 
 void WebSocketConnection::sendText(const QString &message)
 {
-    m_ws->sendTextMessage(message);
+    const auto sent = m_ws->sendTextMessage(message);
+    if (sent == 0) {
+        qWarning() << "WebSocketConnection::sendText data was not sent";
+    }
 }
 
 void WebSocketConnection::onConnected()

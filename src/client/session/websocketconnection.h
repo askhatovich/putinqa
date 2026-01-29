@@ -31,7 +31,7 @@ class WebSocketConnection : public QObject
     };
 
 public:
-    explicit WebSocketConnection(QNetworkCookieJar *cookieJar, const QUrl &url, QObject *parent = nullptr);
+    explicit WebSocketConnection(const QSharedPointer<QNetworkCookieJar> cookieJar, const QUrl &url, QObject *parent = nullptr);
 
 public slots:
     void connect();
@@ -56,6 +56,6 @@ private slots:
 private:
     QWebSocket* m_ws;
     QUrl m_url;
-    const QNetworkCookieJar* m_cookieJar;
+    const QSharedPointer<QNetworkCookieJar> m_cookieJar;
     Ttl m_reconnectTtl;
 };

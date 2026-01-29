@@ -13,7 +13,7 @@ constexpr auto NETWORK_TIMEOUT_SECS = 10;
 
 Authorization::Authorization(QObject *parent)
     : QObject{parent}
-    , m_cookieJar(new QNetworkCookieJar(this))
+    , m_cookieJar(new QNetworkCookieJar)
 {
 
 }
@@ -44,7 +44,7 @@ const QString &Authorization::getId() const
     return m_clientId;
 }
 
-QNetworkCookieJar *Authorization::getCookieJar()
+const QSharedPointer<QNetworkCookieJar> Authorization::getCookieJar()
 {
     return m_cookieJar;
 }
@@ -69,7 +69,8 @@ void Authorization::connect()
     emit connecting();
 
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
-    manager->setCookieJar(m_cookieJar);
+    manager->setCookieJar(m_cookieJar.data());
+    m_cookieJar->setParent(nullptr);
     manager->setTransferTimeout(NETWORK_TIMEOUT_SECS*1000);
 
     QUrl url(m_url);

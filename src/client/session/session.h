@@ -14,7 +14,7 @@ class Session : public QObject
 {
     Q_OBJECT
 public:
-    explicit Session(const QUrl &url, QNetworkCookieJar *cookieJar, QObject *parent = nullptr);
+    explicit Session(const QUrl &url, const QSharedPointer<QNetworkCookieJar> cookieJar, QObject *parent = nullptr);
     virtual ~Session() = default;
 
     void join(const QString &id);
@@ -25,13 +25,13 @@ public:
 public slots:
     void sendJsonMessage(const QJsonObject &json);
     void sendBinaryMessage(const QByteArray &data);
+    void forceQuit();
 
 signals:
     void joined();
     void stateUpdated();
     void webSocketConnection(bool connected);
-
-    void finished(bool error, const QString& description);
+    void complete(const QString& status, bool success);
 
 private slots:
     void onRequestFinished(QNetworkAccessManager *manager, QNetworkReply *reply);
@@ -41,6 +41,7 @@ private slots:
     void onWsText(const QString &string);
     void onWsBinary(const QByteArray &data);
     void onStateUpdated();
+    void onComplete(const QString& status);
 
 protected:
     struct FileInfo {
@@ -59,8 +60,9 @@ protected:
     const QUrl& m_url;
     QString m_id;
     FileInfo m_fileInfo;
-    QNetworkCookieJar *m_cookieJar;
+    const QSharedPointer<QNetworkCookieJar> m_cookieJar;
     Role m_role = Role::undefined;
     WebSocketConnection *m_wsConnection = nullptr;
     SessionState *m_state = nullptr;
+    bool m_forceQuit = false;
 };

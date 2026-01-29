@@ -1,10 +1,12 @@
 #include "session.h"
+#include "actions.h"
 
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QDebug>
 #include <QFile>
 #include <QFileInfo>
+#include <QTimer>
 
 namespace
 {
@@ -12,7 +14,7 @@ constexpr auto NETWORK_TIMEOUT_SECS = 10;
 
 } // namespace
 
-Session::Session(const QUrl &url, QNetworkCookieJar *cookieJar,QObject *parent)
+Session::Session(const QUrl &url, const QSharedPointer<QNetworkCookieJar> cookieJar, QObject *parent)
     : QObject{parent}
     , m_url(url)
     , m_cookieJar(cookieJar)
@@ -21,6 +23,7 @@ Session::Session(const QUrl &url, QNetworkCookieJar *cookieJar,QObject *parent)
     QObject::connect(this, &Session::joined, this, &Session::onJoined);
     QObject::connect(m_state, &SessionState::updated, this, &Session::stateUpdated);
     QObject::connect(m_state, &SessionState::updated, this, &Session::onStateUpdated);
+    QObject::connect(m_state, &SessionState::complete, this, &Session::onComplete);
 }
 
 void Session::join(const QString &id)
@@ -34,7 +37,8 @@ void Session::join(const QString &id)
     QNetworkRequest request(url);
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
     manager->setTransferTimeout(NETWORK_TIMEOUT_SECS*1000);
-    manager->setCookieJar(m_cookieJar);
+    manager->setCookieJar(m_cookieJar.data());
+    m_cookieJar->setParent(nullptr);
     auto reply = manager->get(request);
     QObject::connect(reply, &QNetworkReply::finished, this, [this, manager, reply]() { onRequestFinished(manager, reply); });
 }
@@ -43,7 +47,7 @@ void Session::create(const QString &localFilePath)
 {
     const auto fileInfo = getLocalFileInfo(localFilePath);
     if (!fileInfo.has_value()) {
-        emit finished(true, "No local file found");
+        emit complete("No local file found", false);
         return;
     }
     m_fileInfo = fileInfo.value();
@@ -56,7 +60,8 @@ void Session::create(const QString &localFilePath)
     QNetworkRequest request(url);
     QNetworkAccessManager *manager = new QNetworkAccessManager(this);
     manager->setTransferTimeout(NETWORK_TIMEOUT_SECS*1000);
-    manager->setCookieJar(m_cookieJar);
+    manager->setCookieJar(m_cookieJar.data());
+    m_cookieJar->setParent(nullptr);
     auto reply = manager->post(request, nullptr);
     QObject::connect(reply, &QNetworkReply::finished, this, [this, manager, reply]() { onRequestFinished(manager, reply); });
 }
@@ -77,7 +82,32 @@ void Session::sendJsonMessage(const QJsonObject &json)
 
 void Session::sendBinaryMessage(const QByteArray &data)
 {
+    if (m_wsConnection == nullptr) {
+        qWarning() << "Session::sendBinaryMessage WebSocket connection is nullptr";
+        return;
+    }
+    m_wsConnection->sendBinary(data);
+}
 
+void Session::forceQuit()
+{
+    m_forceQuit = true;
+
+    if (m_role == Role::sender) {
+        sendJsonMessage(Action::TerminateSession().json());
+        return;
+    }
+
+    QUrl url(m_url);
+    url.setPath("/api/me/leave");
+
+    QNetworkRequest request(url);
+    QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+    manager->setTransferTimeout(NETWORK_TIMEOUT_SECS*1000);
+    manager->setCookieJar(m_cookieJar.data());
+    m_cookieJar->setParent(nullptr);
+    auto reply = manager->post(request, nullptr);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, manager, reply]() { onRequestFinished(manager, reply); });
 }
 
 void Session::onRequestFinished(QNetworkAccessManager *manager, QNetworkReply *reply)
@@ -127,16 +157,32 @@ void Session::onStateUpdated()
 {
     if (m_role == Role::sender) {
         if (m_state->getFileInfo()->name.isEmpty() && m_state->getFileInfo()->size == 0) {
-            QJsonObject json;
-            json["action"] = "set_file_info";
-            QJsonObject data;
-            data["name"] = m_fileInfo.name;
-            data["size"] = m_fileInfo.size;
-            json["data"] = data;
-
-            sendJsonMessage(json);
+            Action::SetFileInfo action {m_fileInfo.name, m_fileInfo.size};
+            sendJsonMessage(action.json());
         }
     }
+}
+
+void Session::onComplete(const QString &status)
+{
+    const auto success = status == "ok";
+    QString text;
+    if (status == "ok") {
+        text = "Completed successfully";
+    }
+    else if (status == "timeout") {
+        text = "The maximum duration has been reached";
+    }
+    else if (status == "sender_is_gone") {
+        text = "Sender is gone";
+    }
+    else if (status == "no_receivers") {
+        text = "There are no receivers";
+    }
+    else {
+        text = QStringLiteral("Unknown (code=%1)").arg(status);
+    }
+    emit complete(text, success);
 }
 
 std::optional<Session::FileInfo> Session::getLocalFileInfo(const QString &path)
@@ -162,13 +208,18 @@ void Session::processReply(QNetworkReply *reply)
 
     const auto code = reply->attribute(QNetworkRequest::Attribute::HttpStatusCodeAttribute).toInt();
     if (code == 0) {
-        emit finished(true, "Connection error");
+        emit complete("Connection error", false);
+        return;
+    }
+
+    if (m_forceQuit && code == 200) {
+        emit complete("Terminated by you", false);
         return;
     }
 
     if (code != 201 && code != 202) {
         qWarning() << "Session::processReply code" << code << "/ body" << reply->readAll();
-        emit finished(true, QStringLiteral("Code %1").arg(code));
+        emit complete(QStringLiteral("Code %1").arg(code), false);
         return;
     }
 
@@ -187,4 +238,3 @@ void Session::processReply(QNetworkReply *reply)
 
     emit joined();
 }
-

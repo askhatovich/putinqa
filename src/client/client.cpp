@@ -35,6 +35,11 @@ void Client::createSession(const QString &file)
     m_session->create(file);
 }
 
+void Client::forceQuit()
+{
+    m_session->forceQuit();
+}
+
 void Client::onServerWorkloadUpdate(const ServerWorkloadInfo &info)
 {
     // qInfo() << "---" << m_internalId;
@@ -56,12 +61,14 @@ void Client::onAuthorized()
     m_session = new Session(m_authorization->getUrl(), m_authorization->getCookieJar(), this);
     QObject::connect(m_session, &Session::stateUpdated, this, &Client::stateUpdated);
     QObject::connect(m_session, &Session::joined, this, &Client::onSessionJoined);
-    QObject::connect(m_session, &Session::finished, this, &Client::onSessionFinished);
+    QObject::connect(m_session, &Session::complete, this, &Client::onSessionFinished);
+    QObject::connect(m_session, &Session::webSocketConnection, this, &Client::webSocketConnection);
     QObject::connect(m_session, &Session::webSocketConnection, this, [this](bool connected){
         qInfo().noquote() << m_internalId << "WebSocket connection" << connected;
     });
     QObject::connect(m_session, &Session::stateUpdated, this, [this](){
-        qInfo().noquote() << m_internalId << "state updated" << "File:" << m_session->getState().getFileInfo()->name << "Receivers:" << m_session->getState().getReceivers().size() << "My_id" << m_authorization->getId() << "session_id" << m_session->getId();
+        // const auto text = m_session->getState().dump();
+        // qInfo().noquote() << m_internalId << "\n" << text << "\n";
     });
 
     emit authorized();
@@ -77,14 +84,15 @@ void Client::onSessionJoined()
     emit joinedToSession();
 }
 
-void Client::onSessionFinished(bool error, const QString &description)
+void Client::onSessionFinished(const QString &description, bool success)
 {
-    emit complete(error, description);
+    qInfo().noquote() << m_internalId << "FINISHED" << (success ? "success" : "error") << description;
+    emit complete(description, success);
 }
 
 void Client::onSessionFinishedWithError(const QString &description)
 {
-    emit complete(true, description);
+    emit complete(description, false);
 }
 
 

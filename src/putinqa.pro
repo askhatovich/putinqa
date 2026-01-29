@@ -6,7 +6,7 @@ SOURCES += \
     client/authorization.cpp \
     client/client.cpp \
     client/serverworkload.cpp \
-    client/session/event.cpp \
+    client/session/actions.cpp \
     client/session/websocketconnection.cpp \
     client/session/session.cpp \
     client/session/sessionstate.cpp \
@@ -17,7 +17,7 @@ HEADERS += \
     client/authorization.h \
     client/client.h \
     client/serverworkload.h \
-    client/session/event.h \
+    client/session/actions.h \
     client/session/websocketconnection.h \
     client/session/session.h \
     client/session/sessionstate.h \

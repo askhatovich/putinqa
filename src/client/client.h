@@ -19,18 +19,20 @@ signals:
     void authorized();
     void joinedToSession();
     void stateUpdated();
-    void complete(bool error, const QString &description);
+    void webSocketConnection(bool connected);
+    void complete(const QString &description, bool success);
 
 public slots:
     void authorize();
     void joinToSession(const QString &id);
     void createSession(const QString &file);
+    void forceQuit();
 
 private slots:
     void onServerWorkloadUpdate(const ServerWorkloadInfo& info);
     void onAuthorized();
     void onSessionJoined();
-    void onSessionFinished(bool error, const QString &description);
+    void onSessionFinished(const QString &description, bool success);
     void onSessionFinishedWithError(const QString &description);
 
 private:
