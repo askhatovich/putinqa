@@ -61,7 +61,8 @@ void Client::onAuthorized()
         qInfo().noquote() << m_internalId << "WebSocket connection" << connected;
     });
     QObject::connect(m_session, &Session::stateUpdated, this, [this](){
-        qInfo().noquote() << m_internalId << "state updated" << "File:" << m_session->getState().getFileInfo()->name << "Receivers:" << m_session->getState().getReceivers().size() << "My_id" << m_authorization->getId() << "session_id" << m_session->getId();
+        const auto text = m_session->getState().dump();
+        qInfo().noquote() << m_internalId << "\n" << text << "\n";
     });
 
     emit authorized();
