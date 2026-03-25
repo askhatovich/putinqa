@@ -15,6 +15,25 @@ Rectangle {
         anchors.leftMargin: 12; anchors.rightMargin: 12
         spacing: 8
 
+        // Proxy indicator
+        Text {
+            visible: appController.proxyType !== "none" && appController.proxyHost.length > 0
+            text: appController.proxyType.toUpperCase() + " " + appController.proxyHost + ":" + appController.proxyPort
+            color: "#e9a040"
+            font.pixelSize: 10
+            font.family: "monospace"
+            elide: Text.ElideRight
+            Layout.maximumWidth: 160
+        }
+
+        Text {
+            visible: appController.proxyType !== "none" && appController.proxyHost.length > 0
+                     && (appController.inSession ? appController.activeServer.length > 0 : appController.serverUrl.length > 0)
+            text: "\u2192"
+            color: "#666"
+            font.pixelSize: 11
+        }
+
         // Server indicator
         Text {
             visible: appController.inSession ? appController.activeServer.length > 0 : appController.serverUrl.length > 0

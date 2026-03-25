@@ -35,6 +35,7 @@ public slots:
 
 signals:
     void updated(const ServerWorkloadInfo& info);
+    void connectionFailed();
 
 private slots:
     void onTimeout();

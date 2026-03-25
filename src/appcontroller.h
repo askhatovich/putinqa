@@ -14,6 +14,7 @@
 #include <QQueue>
 #include <QUrl>
 #include <QLocale>
+#include <QNetworkProxy>
 
 #include "client/authorization.h"
 #include "client/serverworkload.h"
@@ -57,6 +58,9 @@ class AppController : public QObject
     Q_PROPERTY(QString myClientId READ myClientId NOTIFY myClientIdChanged)
     Q_PROPERTY(QString language READ language NOTIFY languageChanged)
     Q_PROPERTY(QVariantMap t READ translations NOTIFY languageChanged)
+    Q_PROPERTY(QString proxyType READ proxyType NOTIFY proxyChanged)
+    Q_PROPERTY(QString proxyHost READ proxyHost NOTIFY proxyChanged)
+    Q_PROPERTY(quint16 proxyPort READ proxyPort NOTIFY proxyChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -96,6 +100,9 @@ public:
     QString myClientId() const { return m_auth ? m_auth->getId() : QString(); }
     QString language() const { return m_language; }
     QVariantMap translations() const;
+    QString proxyType() const { return m_proxyType; }
+    QString proxyHost() const { return m_proxyHost; }
+    quint16 proxyPort() const { return m_proxyPort; }
 
     Q_INVOKABLE void startSend();
     Q_INVOKABLE void selectFile(const QUrl &fileUrl);
@@ -103,7 +110,8 @@ public:
     Q_INVOKABLE void solveCaptcha(const QString &answer);
     Q_INVOKABLE void copyShareLink();
     Q_INVOKABLE void openSettings();
-    Q_INVOKABLE void saveSettings(const QString &url, const QString &name, const QString &language);
+    Q_INVOKABLE void saveSettings(const QString &url, const QString &name, const QString &language,
+                                      const QString &proxyType, const QString &proxyHost, quint16 proxyPort);
     Q_INVOKABLE void dropFreeze();
     Q_INVOKABLE void kickReceiver(const QString &id);
     Q_INVOKABLE void terminateSession();
@@ -113,6 +121,7 @@ public:
     Q_INVOKABLE void saveReceivedFile(const QUrl &path);
     Q_INVOKABLE void minimizeToTray();
     Q_INVOKABLE QString formatBytes(qint64 bytes) const;
+    Q_INVOKABLE QString qrDataUrl() const;
 
 signals:
     void screenChanged();
@@ -146,6 +155,7 @@ signals:
     void languageChanged();
     void myClientIdChanged();
 
+    void proxyChanged();
     void showWindowRequested();
     void trayRequested();
 
@@ -188,12 +198,16 @@ private:
     void updateReceiversList();
     void buildShareLink();
     void resetSessionState();
+    void applyProxy();
 
     QSettings m_settings;
     QString m_serverUrl;
     QString m_activeServer;
     QString m_userName;
     QString m_language;
+    QString m_proxyType = "none";
+    QString m_proxyHost;
+    quint16 m_proxyPort = 0;
 
     QString m_screen = "entry";
     QString m_screenBeforeSettings;

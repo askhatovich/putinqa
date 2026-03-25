@@ -62,6 +62,11 @@ Rectangle {
                         color: modelData.isOnline ? "#4caf50" : "#666"
                     }
                     Text { Layout.fillWidth: true; text: modelData.name || appController.t.receiverFallback; color: parent.parent.isMe ? "#7dcea0" : "#eee"; font.pixelSize: 12; elide: Text.ElideRight }
+                    Text {
+                        visible: modelData.done !== true
+                        text: "#" + modelData.currentChunk
+                        color: "#999"; font.pixelSize: 10
+                    }
 
                     Rectangle {
                         width: 20; height: 20; radius: 10

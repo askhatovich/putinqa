@@ -105,10 +105,15 @@ ApplicationWindow {
                 anchors.rightMargin: 12
 
                 Text {
-                    color: "#666"
                     font.pixelSize: 11
+                    color: {
+                        var s = appController.stats
+                        return (s && s.connected === false) ? "#e94560" : "#666"
+                    }
                     text: {
                         var s = appController.stats
+                        if (s && s.connected === false)
+                            return appController.t.noConnection
                         if (s && s.currentUserCount !== undefined)
                             return appController.t.users + ": " + s.currentUserCount + "/" + s.maxUserCount +
                                    "  " + appController.t.sessions + ": " + s.currentSessionCount + "/" + s.maxSessionCount

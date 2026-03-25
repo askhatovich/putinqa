@@ -8,6 +8,9 @@ import QtQuick.Layouts
 
 Item {
     property string selectedLang: appController.language
+    property string selectedProxy: appController.proxyType
+    property string proxyHost: appController.proxyHost
+    property int proxyPort: appController.proxyPort
 
     ColumnLayout {
         anchors.centerIn: parent
@@ -85,6 +88,91 @@ Item {
             }
         }
 
+        ColumnLayout {
+            Layout.fillWidth: true; spacing: 6
+            Text { text: appController.t.proxyLabel; color: "#999"; font.pixelSize: 12 }
+            RowLayout {
+                spacing: 8
+
+                Rectangle {
+                    width: 60; height: 36; radius: 4
+                    color: noneMA.containsMouse ? (selectedProxy === "none" ? "#0f3460" : "#1a1a3e") : (selectedProxy === "none" ? "#0f3460" : "#1a1a2e")
+                    border.color: selectedProxy === "none" ? "#e94560" : "#0f3460"
+                    border.width: selectedProxy === "none" ? 2 : 1
+                    Text { anchors.centerIn: parent; text: appController.t.proxyNone; color: selectedProxy === "none" ? "#eee" : "#999"; font.pixelSize: 13; font.bold: selectedProxy === "none" }
+                    MouseArea {
+                        id: noneMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: selectedProxy = "none"
+                    }
+                }
+
+                Rectangle {
+                    width: 80; height: 36; radius: 4
+                    color: socks5MA.containsMouse ? (selectedProxy === "socks5" ? "#0f3460" : "#1a1a3e") : (selectedProxy === "socks5" ? "#0f3460" : "#1a1a2e")
+                    border.color: selectedProxy === "socks5" ? "#e94560" : "#0f3460"
+                    border.width: selectedProxy === "socks5" ? 2 : 1
+                    Text { anchors.centerIn: parent; text: "SOCKS5"; color: selectedProxy === "socks5" ? "#eee" : "#999"; font.pixelSize: 13; font.bold: selectedProxy === "socks5" }
+                    MouseArea {
+                        id: socks5MA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: selectedProxy = "socks5"
+                    }
+                }
+
+                Rectangle {
+                    width: 70; height: 36; radius: 4
+                    color: httpMA.containsMouse ? (selectedProxy === "http" ? "#0f3460" : "#1a1a3e") : (selectedProxy === "http" ? "#0f3460" : "#1a1a2e")
+                    border.color: selectedProxy === "http" ? "#e94560" : "#0f3460"
+                    border.width: selectedProxy === "http" ? 2 : 1
+                    Text { anchors.centerIn: parent; text: "HTTP"; color: selectedProxy === "http" ? "#eee" : "#999"; font.pixelSize: 13; font.bold: selectedProxy === "http" }
+                    MouseArea {
+                        id: httpMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        onClicked: selectedProxy = "http"
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true; spacing: 8
+                visible: selectedProxy !== "none"
+
+                Rectangle {
+                    Layout.fillWidth: true; height: 38; radius: 4
+                    color: "#16213e"; border.color: "#0f3460"
+                    TextInput {
+                        id: proxyHostInput; anchors.fill: parent; anchors.margins: 8
+                        color: "#eee"; font.pixelSize: 13; font.family: "monospace"
+                        text: proxyHost; selectByMouse: true
+                        verticalAlignment: TextInput.AlignVCenter
+                        Text {
+                            anchors.fill: parent; verticalAlignment: Text.AlignVCenter
+                            visible: !proxyHostInput.text && !proxyHostInput.activeFocus
+                            text: "127.0.0.1"; color: "#555"; font.pixelSize: 13; font.family: "monospace"
+                        }
+                    }
+                }
+
+                Text { text: ":"; color: "#999"; font.pixelSize: 16 }
+
+                Rectangle {
+                    width: 80; height: 38; radius: 4
+                    color: "#16213e"; border.color: "#0f3460"
+                    TextInput {
+                        id: proxyPortInput; anchors.fill: parent; anchors.margins: 8
+                        color: "#eee"; font.pixelSize: 13; font.family: "monospace"
+                        text: proxyPort > 0 ? proxyPort.toString() : ""; selectByMouse: true
+                        verticalAlignment: TextInput.AlignVCenter
+                        validator: IntValidator { bottom: 1; top: 65535 }
+                        Text {
+                            anchors.fill: parent; verticalAlignment: Text.AlignVCenter
+                            visible: !proxyPortInput.text && !proxyPortInput.activeFocus
+                            text: selectedProxy === "socks5" ? "9050" : "4444"
+                            color: "#555"; font.pixelSize: 13; font.family: "monospace"
+                        }
+                    }
+                }
+            }
+        }
+
         RowLayout {
             Layout.fillWidth: true; spacing: 12
 
@@ -94,7 +182,8 @@ Item {
                 Text { anchors.centerIn: parent; text: appController.t.save; color: "#eee"; font.pixelSize: 14 }
                 MouseArea {
                     id: saveMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: appController.saveSettings(urlInput.text.trim(), nameInput.text.trim(), selectedLang)
+                    onClicked: appController.saveSettings(urlInput.text.trim(), nameInput.text.trim(), selectedLang,
+                                                         selectedProxy, proxyHostInput.text.trim(), parseInt(proxyPortInput.text) || 0)
                 }
             }
 

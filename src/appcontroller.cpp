@@ -15,6 +15,9 @@
 #include <QUrlQuery>
 #include <QDateTime>
 #include <QDebug>
+#include <QImage>
+#include <QBuffer>
+#include <qrencode.h>
 
 AppController::AppController(QObject *parent)
     : QObject(parent)
@@ -34,6 +37,12 @@ AppController::AppController(QObject *parent)
     }
     QObject::connect(m_serverWorkload, &ServerWorkload::updated,
                      this, &AppController::onServerWorkloadUpdated);
+    QObject::connect(m_serverWorkload, &ServerWorkload::connectionFailed, this, [this]() {
+        if (m_stats.value("connected", true).toBool()) {
+            m_stats["connected"] = false;
+            emit statsChanged();
+        }
+    });
 
     m_freezeTimer->setInterval(1000);
     QObject::connect(m_freezeTimer, &QTimer::timeout, this, [this]() {
@@ -107,9 +116,31 @@ void AppController::loadSettings()
         m_settings.setValue("user/name", m_userName);
     }
 
+    m_proxyType = m_settings.value("proxy/type", "none").toString();
+    m_proxyHost = m_settings.value("proxy/host", "").toString();
+    m_proxyPort = static_cast<quint16>(m_settings.value("proxy/port", 0).toUInt());
+    applyProxy();
+
     emit userNameChanged();
     emit serverUrlChanged();
     emit languageChanged();
+}
+
+void AppController::applyProxy()
+{
+    QNetworkProxy proxy;
+    if (m_proxyType == "socks5") {
+        proxy.setType(QNetworkProxy::Socks5Proxy);
+        proxy.setHostName(m_proxyHost);
+        proxy.setPort(m_proxyPort);
+    } else if (m_proxyType == "http") {
+        proxy.setType(QNetworkProxy::HttpProxy);
+        proxy.setHostName(m_proxyHost);
+        proxy.setPort(m_proxyPort);
+    } else {
+        proxy.setType(QNetworkProxy::NoProxy);
+    }
+    QNetworkProxy::setApplicationProxy(proxy);
 }
 
 void AppController::setScreen(const QString &screen)
@@ -240,7 +271,8 @@ void AppController::openSettings()
     }
 }
 
-void AppController::saveSettings(const QString &url, const QString &name, const QString &language)
+void AppController::saveSettings(const QString &url, const QString &name, const QString &language,
+                                  const QString &proxyType, const QString &proxyHost, quint16 proxyPort)
 {
     m_serverUrl = url;
     bool nameChanged = (m_userName != name);
@@ -249,6 +281,21 @@ void AppController::saveSettings(const QString &url, const QString &name, const 
     m_settings.setValue("user/name", m_userName);
     emit serverUrlChanged();
     emit userNameChanged();
+
+    QString effectiveProxyType = proxyType;
+    if (effectiveProxyType != "none" && (proxyHost.isEmpty() || proxyPort == 0))
+        effectiveProxyType = "none";
+
+    if (m_proxyType != effectiveProxyType || m_proxyHost != proxyHost || m_proxyPort != proxyPort) {
+        m_proxyType = effectiveProxyType;
+        m_proxyHost = proxyHost;
+        m_proxyPort = proxyPort;
+        m_settings.setValue("proxy/type", m_proxyType);
+        m_settings.setValue("proxy/host", m_proxyHost);
+        m_settings.setValue("proxy/port", m_proxyPort);
+        applyProxy();
+        emit proxyChanged();
+    }
 
     if (nameChanged && m_session) {
         // Server truncates to 20 chars — match locally
@@ -304,6 +351,13 @@ void AppController::terminateSession()
 {
     if (m_session) {
         m_terminateRequested = true;
+        m_waitingForChunkAccepted = false;
+        m_canSendChunk = false;
+        if (m_uploadFile) {
+            m_uploadFile->close();
+            delete m_uploadFile;
+            m_uploadFile = nullptr;
+        }
         m_session->sendJsonMessage(Action::TerminateSession().json());
     }
 }
@@ -437,6 +491,47 @@ QString AppController::formatBytes(qint64 bytes) const
     return QStringLiteral("%1 GB").arg(bytes / (1024.0 * 1024 * 1024), 0, 'f', 2);
 }
 
+QString AppController::qrDataUrl() const
+{
+    if (m_shareLink.isEmpty())
+        return {};
+
+    QRcode *qr = QRcode_encodeString(m_shareLink.toUtf8().constData(),
+                                     0, QR_ECLEVEL_M, QR_MODE_8, 1);
+    if (!qr)
+        return {};
+
+    const int modules = qr->width;
+    const int margin = 2;
+    const int scale = 8;
+    const int size = (modules + margin * 2) * scale;
+
+    QImage img(size, size, QImage::Format_RGB32);
+    img.fill(QColor(0x1a, 0x1a, 0x2e));  // dark background
+
+    const QColor fg(0xee, 0xee, 0xee);
+    for (int y = 0; y < modules; ++y) {
+        for (int x = 0; x < modules; ++x) {
+            if (qr->data[y * modules + x] & 1) {
+                const int px = (x + margin) * scale;
+                const int py = (y + margin) * scale;
+                for (int dy = 0; dy < scale; ++dy)
+                    for (int dx = 0; dx < scale; ++dx)
+                        img.setPixel(px + dx, py + dy, fg.rgb());
+            }
+        }
+    }
+
+    QRcode_free(qr);
+
+    QByteArray pngData;
+    QBuffer buf(&pngData);
+    buf.open(QIODevice::WriteOnly);
+    img.save(&buf, "PNG");
+
+    return QStringLiteral("data:image/png;base64,") + QString::fromLatin1(pngData.toBase64());
+}
+
 QVariantMap AppController::translations() const
 {
     static const QVariantMap en = {
@@ -477,7 +572,7 @@ QVariantMap AppController::translations() const
         {"error", "Error"},
         {"sessionEnded", "Session ended: "},
         {"saveFile", "Save file"},
-        {"newTransfer", "New transfer"},
+        {"newTransfer", "Home"},
         {"connecting", "Connecting..."},
         {"users", "Users"},
         {"sessions", "Sessions"},
@@ -486,6 +581,11 @@ QVariantMap AppController::translations() const
         {"saveFileTitle", "Save received file"},
         {"chunks", "Chunks"},
         {"secondsShort", "s"},
+        {"noConnection", "No connection"},
+        {"proxyLabel", "Proxy"},
+        {"proxyNone", "Off"},
+        {"proxyHost", "Host"},
+        {"proxyPort", "Port"},
     };
     static const QVariantMap ru = {
         {"appSlogan", QString::fromUtf8("Потоковая передача файлов со сквозным шифрованием")},
@@ -525,7 +625,7 @@ QVariantMap AppController::translations() const
         {"error", QString::fromUtf8("Ошибка")},
         {"sessionEnded", QString::fromUtf8("Сессия завершена: ")},
         {"saveFile", QString::fromUtf8("Сохранить файл")},
-        {"newTransfer", QString::fromUtf8("Новая передача")},
+        {"newTransfer", QString::fromUtf8("Домой")},
         {"connecting", QString::fromUtf8("Подключение...")},
         {"users", QString::fromUtf8("Пользователи")},
         {"sessions", QString::fromUtf8("Сессии")},
@@ -534,6 +634,11 @@ QVariantMap AppController::translations() const
         {"saveFileTitle", QString::fromUtf8("Сохранить полученный файл")},
         {"chunks", QString::fromUtf8("Чанки")},
         {"secondsShort", QString::fromUtf8("с")},
+        {"noConnection", QString::fromUtf8("Нет соединения")},
+        {"proxyLabel", QString::fromUtf8("Прокси")},
+        {"proxyNone", QString::fromUtf8("Выкл")},
+        {"proxyHost", QString::fromUtf8("Хост")},
+        {"proxyPort", QString::fromUtf8("Порт")},
     };
     return m_language == "ru" ? ru : en;
 }
@@ -716,6 +821,23 @@ void AppController::onSessionComplete(const QString &status)
     m_expirationTimer->stop();
     m_freezeTimer->stop();
 
+    // Receiver: delay leave so sender sees the checkmark for a few seconds
+    if (!m_isSender && m_session) {
+        auto cookieJar = m_session->getCookieJar();
+        QString serverUrl = m_activeServer;
+        int delayMs = (status == "ok") ? 5000 : 0;
+        QTimer::singleShot(delayMs, this, [cookieJar, serverUrl]() {
+            QUrl url(serverUrl);
+            url.setPath("/api/me/leave");
+            auto *manager = new QNetworkAccessManager();
+            manager->setTransferTimeout(10000);
+            manager->setCookieJar(cookieJar.data());
+            cookieJar->setParent(nullptr);
+            auto *reply = manager->post(QNetworkRequest(url), QByteArray());
+            QObject::connect(reply, &QNetworkReply::finished, manager, &QObject::deleteLater);
+        });
+    }
+
     // Disconnect from server — session is done from our side
     if (m_session) {
         m_session->deleteLater();
@@ -822,7 +944,7 @@ void AppController::onSessionInitialized()
 
 void AppController::uploadNextChunk()
 {
-    if (!m_uploadFile || m_waitingForChunkAccepted) return;
+    if (!m_uploadFile || !m_session || m_waitingForChunkAccepted) return;
 
     if (m_uploadFile->atEnd()) {
         m_session->sendJsonMessage(Action::UploadFinished().json());
@@ -849,6 +971,8 @@ void AppController::onNewChunkEvent(qint64 index, qint64 size)
             m_highestKnownChunk = index;
             emit highestKnownChunkChanged();
         }
+
+        if (!m_session) return;
 
         m_bufferUsed = m_session->getState().getChunks()->value.size();
         emit bufferUsedChanged();
@@ -882,7 +1006,7 @@ void AppController::onChunkRemovedEvent()
 
 void AppController::onNewChunkAllowed(bool status)
 {
-    if (m_isSender && status && !m_canSendChunk) {
+    if (m_isSender && status && !m_canSendChunk && m_session) {
         m_canSendChunk = true;
         QTimer::singleShot(0, this, &AppController::uploadNextChunk);
     }
@@ -946,11 +1070,7 @@ void AppController::onChunkDownloadFinished(const QString &receiverId, qint64 in
     // Track per-receiver download progress (for sender's member list)
     if (m_isSender) {
         m_receiverChunksDone[receiverId]++;
-        // Check if this receiver finished all chunks
-        if (m_uploadFinished && m_highestKnownChunk > 0 &&
-            m_receiverChunksDone[receiverId] >= m_highestKnownChunk) {
-            updateReceiversList();
-        }
+        updateReceiversList();
     }
 }
 
@@ -1108,6 +1228,7 @@ void AppController::buildShareLink()
 
 void AppController::onServerWorkloadUpdated(const ServerWorkloadInfo &info)
 {
+    m_stats["connected"] = true;
     m_stats["currentUserCount"] = info.currentUserCount;
     m_stats["currentSessionCount"] = info.currentSessionCount;
     m_stats["maxUserCount"] = info.maxUserCount;

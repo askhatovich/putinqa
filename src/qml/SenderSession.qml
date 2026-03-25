@@ -9,6 +9,7 @@ import QtQuick.Layouts
 Item {
     id: senderRoot
 
+    property bool showQR: false
     readonly property bool wideMode: width > 620
 
     RowLayout {
@@ -144,6 +145,17 @@ Item {
                                 onClicked: { appController.copyShareLink(); copyBtn1.copied = true; copyTimer1.restart() }
                             }
                         }
+
+                        Rectangle {
+                            Layout.preferredWidth: 34; height: 34; radius: 4
+                            color: qrMA1.containsMouse ? (qrMA1.pressed ? "#0a2a50" : "#1a4a80") : "#0f3460"
+                            Text { anchors.centerIn: parent; text: "QR"; color: "#eee"; font.pixelSize: 11; font.bold: true }
+                            MouseArea {
+                                id: qrMA1; anchors.fill: parent; hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: senderRoot.showQR = true
+                            }
+                        }
                     }
                 }
             }
@@ -211,6 +223,16 @@ Item {
                                 onClicked: { appController.copyShareLink(); copyBtn2.copied = true; copyTimer2.restart() }
                             }
                         }
+
+                        Rectangle {
+                            Layout.preferredWidth: 34; height: 34; radius: 4
+                            color: qrMA2.containsMouse ? (qrMA2.pressed ? "#0a2a50" : "#1a4a80") : "#0f3460"
+                            Text { anchors.centerIn: parent; text: "QR"; color: "#eee"; font.pixelSize: 11; font.bold: true }
+                            MouseArea {
+                                id: qrMA2; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                                onClicked: senderRoot.showQR = true
+                            }
+                        }
                     }
                 }
             }
@@ -251,6 +273,56 @@ Item {
             Text {
                 Layout.fillWidth: true; visible: appController.errorMsg.length > 0
                 text: appController.errorMsg; color: "#e94560"; font.pixelSize: 13; wrapMode: Text.Wrap
+            }
+        }
+    }
+
+    // QR Code modal
+    Rectangle {
+        id: qrOverlay
+        anchors.fill: parent
+        visible: senderRoot.showQR
+        color: Qt.rgba(0, 0, 0, 0.7)
+        z: 100
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: senderRoot.showQR = false
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: qrCol.implicitWidth + 40
+            height: qrCol.implicitHeight + 40
+            radius: 12
+            color: "#16213e"
+
+            MouseArea { anchors.fill: parent }
+
+            Column {
+                id: qrCol
+                anchors.centerIn: parent
+                spacing: 12
+
+                Image {
+                    id: qrImage
+                    width: 280; height: 280
+                    source: senderRoot.showQR ? appController.qrDataUrl() : ""
+                    fillMode: Image.PreserveAspectFit
+                    smooth: false
+                }
+
+                Rectangle {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: closeQrText.implicitWidth + 24; height: 32; radius: 4
+                    color: closeQrMA.containsMouse ? (closeQrMA.pressed ? "#0a2a50" : "#1a4a80") : "#0f3460"
+                    Text { id: closeQrText; anchors.centerIn: parent; text: appController.t.back; color: "#eee"; font.pixelSize: 12 }
+                    MouseArea {
+                        id: closeQrMA; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: senderRoot.showQR = false
+                    }
+                }
             }
         }
     }

@@ -51,15 +51,25 @@ void ServerWorkload::onRequestFinished(QNetworkReply *reply)
         return;
     }
 
+    if (reply->error() != QNetworkReply::NoError) {
+        reply->deleteLater();
+        emit connectionFailed();
+        return;
+    }
+
     const auto code = reply->attribute(QNetworkRequest::Attribute::HttpStatusCodeAttribute).toInt();
     if (code != 200) {
         qWarning() << "ServerWorkload::onRequestFinished code is" << code;
+        reply->deleteLater();
+        emit connectionFailed();
         return;
     }
 
     const auto json = QJsonDocument::fromJson(reply->readAll()).object();
     if (json.isEmpty()) {
         qWarning() << "ServerWorkload::onRequestFinished JSON is empty (or invalid)";
+        reply->deleteLater();
+        emit connectionFailed();
         return;
     }
 
