@@ -102,17 +102,7 @@ void AppController::loadSettings()
         };
         const auto &names = (m_language == "ru") ? ru : en;
 
-        // Random emoji from dense Unicode emoji blocks
-        struct Range { char32_t start; char32_t end; };
-        static const Range emojiRanges[] = {
-            {0x1F600, 0x1F636}, // smileys
-            {0x1F400, 0x1F43E}, // animals
-        };
-        const auto &r = emojiRanges[QRandomGenerator::global()->bounded(2)];
-        char32_t cp = r.start + QRandomGenerator::global()->bounded(r.end - r.start + 1);
-
-        m_userName = names[QRandomGenerator::global()->bounded(names.size())]
-                     + " " + QString::fromUcs4(&cp, 1);
+        m_userName = names[QRandomGenerator::global()->bounded(names.size())];
         m_settings.setValue("user/name", m_userName);
     }
 
@@ -1067,11 +1057,11 @@ void AppController::onChunkDownloadFinished(const QString &receiverId, qint64 in
         checkReceiverDone();
     }
 
-    // Track per-receiver download progress (for sender's member list)
+    // Track per-receiver download progress
     if (m_isSender) {
         m_receiverChunksDone[receiverId]++;
-        updateReceiversList();
     }
+    updateReceiversList();
 }
 
 void AppController::checkReceiverDone()
