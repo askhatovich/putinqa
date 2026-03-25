@@ -1,0 +1,18 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="appicon.png">icons/putinqa.png</file>
+    </qresource>
+    <qresource prefix="/qml">
+        <file alias="main.qml">qml/main.qml</file>
+        <file alias="EntryScreen.qml">qml/EntryScreen.qml</file>
+        <file alias="SettingsScreen.qml">qml/SettingsScreen.qml</file>
+        <file alias="CaptchaScreen.qml">qml/CaptchaScreen.qml</file>
+        <file alias="SenderSession.qml">qml/SenderSession.qml</file>
+        <file alias="ReceiverSession.qml">qml/ReceiverSession.qml</file>
+        <file alias="TransferComplete.qml">qml/TransferComplete.qml</file>
+        <file alias="MemberList.qml">qml/MemberList.qml</file>
+        <file alias="ProgressPanel.qml">qml/ProgressPanel.qml</file>
+        <file alias="NameBadge.qml">qml/NameBadge.qml</file>
+        <file alias="SessionTimer.qml">qml/SessionTimer.qml</file>
+    </qresource>
+</RCC>

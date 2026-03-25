@@ -1,0 +1,141 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.*'
+          modules: 'qtwebsockets'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake build-essential pkg-config libgl-dev \
+            libsodium-dev libxcb-cursor0 \
+            libfuse2
+
+      - name: Build
+        env:
+          APP_VERSION: ${{ github.ref_name }}
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build -j$(nproc)
+
+      - name: Create AppImage
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+
+          mkdir -p AppDir/usr/bin AppDir/usr/share/icons/hicolor/256x256/apps
+          cp build/putinqa AppDir/usr/bin/
+          cp src/icons/putinqa.png AppDir/usr/share/icons/hicolor/256x256/apps/
+          cp putinqa.desktop AppDir/
+
+          export QML_SOURCES_PATHS=src/qml
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage \
+            --desktop-file putinqa.desktop --icon-file src/icons/putinqa.png
+          mv PutinQA-*.AppImage putinqa-${{ github.ref_name }}-linux-x86_64.AppImage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimage
+          path: putinqa-*.AppImage
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.*'
+          modules: 'qtwebsockets'
+
+      - name: Install libsodium
+        run: vcpkg install libsodium:x64-windows
+
+      - name: Build
+        env:
+          APP_VERSION: ${{ github.ref_name }}
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          cmake --build build --config Release -j
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p dist/putinqa
+          cp build/Release/putinqa.exe dist/putinqa/
+          windeployqt --qmldir src/qml --release --no-translations dist/putinqa/putinqa.exe
+          cp C:/vcpkg/installed/x64-windows/bin/libsodium.dll dist/putinqa/
+          cd dist && 7z a ../putinqa-${{ github.ref_name }}-windows-x64.zip putinqa/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: putinqa-*.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.*'
+          modules: 'qtwebsockets'
+
+      - name: Install libsodium
+        run: brew install libsodium
+
+      - name: Build
+        env:
+          APP_VERSION: ${{ github.ref_name }}
+          PKG_CONFIG_PATH: /opt/homebrew/lib/pkgconfig
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build -j$(sysctl -n hw.logicalcpu)
+
+      - name: Package
+        run: |
+          macdeployqt build/putinqa.app -qmldir=src/qml -dmg
+          mv build/putinqa.dmg putinqa-${{ github.ref_name }}-macos.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: putinqa-*.dmg
+
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            putinqa-*.AppImage
+            putinqa-*.zip
+            putinqa-*.dmg

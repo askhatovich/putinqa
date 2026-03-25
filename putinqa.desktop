@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=PutinQA
+Comment=Streaming file transfer with end-to-end encryption
+Exec=putinqa
+Icon=putinqa
+Categories=Network;FileTransfer;
+Terminal=false

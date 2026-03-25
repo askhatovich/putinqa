@@ -1,0 +1,6 @@
+build/
+*/build
+*/*.txt.user
+*/*.pro.user
+*.user
+CMakeLists.txt.user
