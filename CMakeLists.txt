@@ -37,6 +37,24 @@ else()
     set(SODIUM_TARGET PkgConfig::SODIUM)
 endif()
 
+# Find libqrencode: try pkg-config (Linux/macOS), fall back to find_path (vcpkg/Windows)
+if(PkgConfig_FOUND OR NOT WIN32)
+    if(NOT PkgConfig_FOUND)
+        find_package(PkgConfig REQUIRED)
+    endif()
+    pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
+    set(QRENCODE_TARGET PkgConfig::QRENCODE)
+else()
+    find_path(QRENCODE_INCLUDE_DIR NAMES qrencode.h REQUIRED)
+    find_library(QRENCODE_LIBRARY NAMES qrencode REQUIRED)
+    add_library(qrencode::qrencode UNKNOWN IMPORTED)
+    set_target_properties(qrencode::qrencode PROPERTIES
+        IMPORTED_LOCATION "${QRENCODE_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${QRENCODE_INCLUDE_DIR}"
+    )
+    set(QRENCODE_TARGET qrencode::qrencode)
+endif()
+
 set(SOURCES
     src/main.cpp
     src/appcontroller.cpp
@@ -98,4 +116,5 @@ target_link_libraries(putinqa PRIVATE
     Qt6::WebSockets
     Qt6::Widgets
     ${SODIUM_TARGET}
+    ${QRENCODE_TARGET}
 )
