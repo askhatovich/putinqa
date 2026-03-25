@@ -72,7 +72,7 @@ if(APPLE)
     set(MACOSX_BUNDLE_ICON_FILE putinqa.icns)
 endif()
 
-add_executable(putinqa ${SOURCES} ${HEADERS} ${QML_RESOURCES} ${WIN_ICON_RC})
+add_executable(putinqa WIN32 ${SOURCES} ${HEADERS} ${QML_RESOURCES} ${WIN_ICON_RC})
 
 if(APPLE)
     set_target_properties(putinqa PROPERTIES
