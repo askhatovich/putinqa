@@ -8,9 +8,10 @@ import QtQuick.Layouts
 
 Item {
     ColumnLayout {
+        id: col
         anchors.centerIn: parent
-        width: Math.min(parent.width - 32, 380)
-        spacing: 20
+        width: Math.min(parent.width - 32, 400)
+        spacing: 18
 
         Text {
             Layout.alignment: Qt.AlignHCenter
@@ -18,50 +19,102 @@ Item {
             color: "#eee"; font.pixelSize: 20; font.bold: true
         }
 
+        // Captcha image: square card that scales with the ColumnLayout
+        // width. Pixelated rendering (smooth: false) matches the web UI's
+        // `image-rendering: pixelated` so scaled captcha stays legible.
         Rectangle {
+            id: imageCard
             Layout.alignment: Qt.AlignHCenter
-            width: 280; height: 100; radius: 8
-            color: "#16213e"; border.color: "#0f3460"
+            Layout.fillWidth: true
+            Layout.preferredHeight: width
+            radius: 10
+            color: "#1a1a2e"
+            border.color: "#0f3460"
+            border.width: 1
+
             Image {
-                anchors.centerIn: parent
+                anchors.fill: parent
+                anchors.margins: 10
                 source: appController.captchaImage.length > 0
                         ? "data:image/png;base64," + appController.captchaImage : ""
-                fillMode: Image.PreserveAspectFit
-                width: parent.width - 16; height: parent.height - 16
+                fillMode: Image.Stretch
+                smooth: false
+                mipmap: false
+                cache: false
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true; spacing: 8
+        // Input with focus-aware border and a subtle placeholder that shows
+        // the expected answer length as a dotted guide.
+        Rectangle {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.fillWidth: true
+            height: 48
+            radius: 6
+            color: "#16213e"
+            border.color: captchaInput.activeFocus ? "#e94560" : "#0f3460"
+            border.width: captchaInput.activeFocus ? 2 : 1
 
-            Rectangle {
-                Layout.fillWidth: true; height: 40; radius: 4
-                color: "#16213e"; border.color: "#0f3460"
-                TextInput {
-                    id: captchaInput; anchors.fill: parent; anchors.margins: 8
-                    color: "#eee"; font.pixelSize: 16; font.family: "monospace"; font.letterSpacing: 4
-                    horizontalAlignment: TextInput.AlignHCenter; verticalAlignment: TextInput.AlignVCenter
-                    maximumLength: appController.captchaAnswerLength > 0 ? appController.captchaAnswerLength : 10
-                    selectByMouse: true
-                    Keys.onReturnPressed: submitCaptcha()
+            TextInput {
+                id: captchaInput
+                anchors.fill: parent
+                anchors.margins: 8
+                color: "#eee"
+                font.pixelSize: 20
+                font.family: "monospace"
+                font.letterSpacing: 6
+                font.bold: true
+                horizontalAlignment: TextInput.AlignHCenter
+                verticalAlignment: TextInput.AlignVCenter
+                maximumLength: appController.captchaAnswerLength > 0 ? appController.captchaAnswerLength : 10
+                selectByMouse: true
+                Keys.onReturnPressed: submitCaptcha()
+
+                Text {
+                    anchors.fill: parent
+                    verticalAlignment: Text.AlignVCenter
+                    horizontalAlignment: Text.AlignHCenter
+                    visible: !captchaInput.text
+                    text: appController.captchaAnswerLength > 0
+                          ? "•".repeat(appController.captchaAnswerLength)
+                          : ""
+                    color: "#444"
+                    font.pixelSize: 20
+                    font.family: "monospace"
+                    font.letterSpacing: 6
                 }
             }
+        }
 
-            Rectangle {
-                width: 80; height: 40; radius: 4
-                color: submitMA.containsMouse ? (submitMA.pressed ? "#0a2a50" : "#1a4a80") : "#0f3460"
-                Text { anchors.centerIn: parent; text: appController.t.submit; color: "#eee"; font.pixelSize: 14 }
-                MouseArea {
-                    id: submitMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                    onClicked: submitCaptcha()
-                }
+        // Primary submit button, full-width
+        Rectangle {
+            Layout.alignment: Qt.AlignHCenter
+            Layout.fillWidth: true
+            height: 44
+            radius: 6
+            color: submitMA.containsMouse ? (submitMA.pressed ? "#c73850" : "#d63450") : "#e94560"
+            Text {
+                anchors.centerIn: parent
+                text: appController.t.submit
+                color: "#fff"; font.pixelSize: 15; font.bold: true
+            }
+            MouseArea {
+                id: submitMA
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: submitCaptcha()
             }
         }
 
         Text {
             Layout.alignment: Qt.AlignHCenter
+            Layout.fillWidth: true
             visible: appController.errorMsg.length > 0
-            text: appController.errorMsg; color: "#e94560"; font.pixelSize: 13
+            text: appController.errorMsg
+            color: "#e94560"; font.pixelSize: 13
+            horizontalAlignment: Text.AlignHCenter
+            wrapMode: Text.WordWrap
         }
     }
 

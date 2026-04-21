@@ -10,12 +10,6 @@
 
 struct ServerWorkloadInfo
 {
-    friend bool operator!=(const ServerWorkloadInfo& lhs, const ServerWorkloadInfo& rhs) {
-        return lhs.currentSessionCount != rhs.currentSessionCount or
-            lhs.currentUserCount != rhs.currentUserCount or
-            lhs.maxSessionCount != rhs.maxSessionCount or
-            lhs.maxUserCount != rhs.maxUserCount;
-    }
     int maxSessionCount = 0;
     int maxUserCount = 0;
     int currentSessionCount = 0;

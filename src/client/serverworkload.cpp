@@ -79,10 +79,13 @@ void ServerWorkload::onRequestFinished(QNetworkReply *reply)
     info.currentSessionCount = json["current_session_count"].toInt();
     info.currentUserCount = json["current_user_count"].toInt();
 
-    if (info != m_info) {
-        m_info = info;
-        emit updated(m_info);
-    }
+    // Emit on every successful reply, not only on counter change. The
+    // UI uses this signal to also flip its "connected" indicator back
+    // to true after a transient failure — suppressing it when counts
+    // happen to match the stale snapshot would leave "No connection"
+    // stuck on screen.
+    m_info = info;
+    emit updated(m_info);
 
     reply->deleteLater();
 }
