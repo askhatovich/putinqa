@@ -58,3 +58,11 @@ QJsonObject Action::ConfirmChunk::json() const
         {"data", QJsonObject{{"index", m_index}}}
     };
 }
+
+QJsonObject Action::Ack::json() const
+{
+    return {
+        {"action", "ack"},
+        {"data", QJsonObject{{"id", m_id}}}
+    };
+}

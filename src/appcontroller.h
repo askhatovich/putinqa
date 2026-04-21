@@ -61,6 +61,7 @@ class AppController : public QObject
     Q_PROPERTY(QString proxyType READ proxyType NOTIFY proxyChanged)
     Q_PROPERTY(QString proxyHost READ proxyHost NOTIFY proxyChanged)
     Q_PROPERTY(quint16 proxyPort READ proxyPort NOTIFY proxyChanged)
+    Q_PROPERTY(bool autoDropFreeze READ autoDropFreeze NOTIFY autoDropFreezeChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -103,6 +104,7 @@ public:
     QString proxyType() const { return m_proxyType; }
     QString proxyHost() const { return m_proxyHost; }
     quint16 proxyPort() const { return m_proxyPort; }
+    bool autoDropFreeze() const { return m_autoDropFreeze; }
 
     Q_INVOKABLE void startSend();
     Q_INVOKABLE void selectFile(const QUrl &fileUrl);
@@ -111,7 +113,8 @@ public:
     Q_INVOKABLE void copyShareLink();
     Q_INVOKABLE void openSettings();
     Q_INVOKABLE void saveSettings(const QString &url, const QString &name, const QString &language,
-                                      const QString &proxyType, const QString &proxyHost, quint16 proxyPort);
+                                      const QString &proxyType, const QString &proxyHost, quint16 proxyPort,
+                                      bool autoDropFreeze);
     Q_INVOKABLE void dropFreeze();
     Q_INVOKABLE void kickReceiver(const QString &id);
     Q_INVOKABLE void terminateSession();
@@ -156,6 +159,7 @@ signals:
     void myClientIdChanged();
 
     void proxyChanged();
+    void autoDropFreezeChanged();
     void showWindowRequested();
     void trayRequested();
 
@@ -208,6 +212,7 @@ private:
     QString m_proxyType = "none";
     QString m_proxyHost;
     quint16 m_proxyPort = 0;
+    bool m_autoDropFreeze = false;
 
     QString m_screen = "entry";
     QString m_screenBeforeSettings;

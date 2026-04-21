@@ -80,4 +80,16 @@ private:
     qint64 m_index;
 };
 
+// Acknowledge a server→client event that carried a top-level "id" field.
+// The server waits for this before closing the WebSocket on terminal
+// events (complete, kicked). Fallback timer kicks in at ~2 s if omitted.
+struct Ack : public Serializable
+{
+    Ack(qint64 id) : m_id(id) {}
+    QJsonObject json() const override;
+
+private:
+    qint64 m_id;
+};
+
 } // namespace Action

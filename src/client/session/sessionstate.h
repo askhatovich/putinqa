@@ -128,6 +128,7 @@ private:
     void onChunksUnfrozen();
     void onUploadFinished();
     void onComplete(const QJsonObject &data);
+    void onKicked();
     void onNewChunkIsAllowed(const QJsonObject &data);
 
     QString m_sessionId;

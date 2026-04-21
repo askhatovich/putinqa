@@ -109,6 +109,8 @@ void AppController::loadSettings()
     m_proxyType = m_settings.value("proxy/type", "none").toString();
     m_proxyHost = m_settings.value("proxy/host", "").toString();
     m_proxyPort = static_cast<quint16>(m_settings.value("proxy/port", 0).toUInt());
+
+    m_autoDropFreeze = m_settings.value("session/auto_drop_freeze", false).toBool();
     applyProxy();
 
     emit userNameChanged();
@@ -262,7 +264,8 @@ void AppController::openSettings()
 }
 
 void AppController::saveSettings(const QString &url, const QString &name, const QString &language,
-                                  const QString &proxyType, const QString &proxyHost, quint16 proxyPort)
+                                  const QString &proxyType, const QString &proxyHost, quint16 proxyPort,
+                                  bool autoDropFreeze)
 {
     m_serverUrl = url;
     bool nameChanged = (m_userName != name);
@@ -317,6 +320,12 @@ void AppController::saveSettings(const QString &url, const QString &name, const 
         m_language = language;
         m_settings.setValue("app/language", m_language);
         emit languageChanged();
+    }
+
+    if (m_autoDropFreeze != autoDropFreeze) {
+        m_autoDropFreeze = autoDropFreeze;
+        m_settings.setValue("session/auto_drop_freeze", m_autoDropFreeze);
+        emit autoDropFreezeChanged();
     }
 
     m_serverWorkload->onServerHostUpdated(QUrl(m_serverUrl));
@@ -576,6 +585,9 @@ QVariantMap AppController::translations() const
         {"proxyNone", "Off"},
         {"proxyHost", "Host"},
         {"proxyPort", "Port"},
+        {"autoDropFreezeLabel", "Auto-start transfer"},
+        {"autoDropFreezeHint", "Drops the initial wait on the first chunk a receiver confirms, and treats a lone leave as a success"},
+        {"kickedStatus", "You were removed from the session"},
     };
     static const QVariantMap ru = {
         {"appSlogan", QString::fromUtf8("Потоковая передача файлов со сквозным шифрованием")},
@@ -625,6 +637,9 @@ QVariantMap AppController::translations() const
         {"chunks", QString::fromUtf8("Чанки")},
         {"secondsShort", QString::fromUtf8("с")},
         {"noConnection", QString::fromUtf8("Нет соединения")},
+        {"autoDropFreezeLabel", QString::fromUtf8("Автостарт передачи")},
+        {"autoDropFreezeHint", QString::fromUtf8("Снимает стартовое ожидание на первом принятом чанке, уход одинокого получателя считается успехом")},
+        {"kickedStatus", QString::fromUtf8("Вы были удалены из сессии")},
         {"proxyLabel", QString::fromUtf8("Прокси")},
         {"proxyNone", QString::fromUtf8("Выкл")},
         {"proxyHost", QString::fromUtf8("Хост")},
@@ -758,7 +773,7 @@ void AppController::startSenderSession()
     connectSessionSignals();
 
     m_encryptionKey = Crypto::generateKey();
-    m_session->create();
+    m_session->create(m_autoDropFreeze);
 }
 
 void AppController::startReceiverSession()

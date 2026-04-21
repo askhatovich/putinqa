@@ -28,6 +28,7 @@ Item {
                 case "sender_is_gone": return appController.t.senderDisconnected
                 case "no_receivers": return appController.t.noReceiversJoined
                 case "terminated_by_you": return appController.t.sessionTerminated
+                case "kicked": return appController.t.kickedStatus
                 case "error": return appController.t.error
                 default: return appController.t.sessionEnded + appController.completeStatus
                 }

@@ -9,7 +9,7 @@
    ├── 201: authorized → proceedAfterAuth()
    ├── 401: captcha required → screen="captcha" → user solves → screen="connecting"
    └── error: screen="entry" with error message
-4. POST /api/session/create → session ID received
+4. POST /api/session/create (JSON body `{auto_drop_freeze: <QSettings>}` if the toggle is on) → session ID received
 5. WebSocket connects to /api/ws with session cookie
 6. Server sends start_init → onSessionInitialized():
    - Generate encryption key
@@ -76,7 +76,7 @@ This is intentional: sender must have a window to share the link before the sess
 
 Receiver relies entirely on server's `complete` event. The `m_hasDownloadedFile` flag is a UI indicator only — it enables the "Save file" button but does NOT trigger session completion.
 
-If server closes WS without sending `complete` (receiver kicked), client shows "Error" status.
+If the sender kicks this receiver, the server sends an explicit `kicked` event (ACK-required) before the close, and the client surfaces `completeStatus = "kicked"`. A silent close without `complete`/`kicked` still falls through to "Error".
 
 ## WebSocket Disconnect Handling
 
@@ -92,3 +92,12 @@ onWsConnection(connected=false, serverClosed):
 ## Settings During Session
 
 Settings can be opened during an active session. `m_screenBeforeSettings` stores the current screen. Save/Back returns to the previous screen. If name changed during session, `NewName` action is sent to server.
+
+## Auto-drop freeze (opt-in)
+
+`AppController::autoDropFreeze()` (persisted in QSettings as `session/auto_drop_freeze`, toggled from SettingsScreen.qml) is passed to `Session::create(bool)` on sender session start. When the flag is on:
+
+- Server drops the initial freeze automatically on the first confirmed chunk — no need to press "Stop waiting".
+- When the last receiver leaves, the server terminates with `status: "ok"` regardless of buffer state (fire-and-forget). Useful for unattended sends.
+
+The flag has no effect for receivers.

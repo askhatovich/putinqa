@@ -50,7 +50,7 @@ void Session::join(const QString &id)
     });
 }
 
-void Session::create()
+void Session::create(bool autoDropFreeze)
 {
     m_role = Role::sender;
 
@@ -62,7 +62,14 @@ void Session::create()
     manager->setCookieJar(m_cookieJar.data());
     m_cookieJar->setParent(nullptr);
 
-    auto *reply = manager->post(QNetworkRequest(url), QByteArray());
+    QNetworkRequest request(url);
+    QByteArray body;
+    if (autoDropFreeze) {
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+        body = QJsonDocument(QJsonObject{{"auto_drop_freeze", true}}).toJson(QJsonDocument::Compact);
+    }
+
+    auto *reply = manager->post(request, body);
     QObject::connect(reply, &QNetworkReply::finished, this, [this, manager, reply]() {
         processReply(reply);
         manager->deleteLater();
@@ -152,7 +159,19 @@ void Session::onWsDisconnected(bool serverClosed)
 
 void Session::onWsText(const QString &string)
 {
-    m_state->processEventJson(QJsonDocument::fromJson(string.toUtf8()).object());
+    const auto obj = QJsonDocument::fromJson(string.toUtf8()).object();
+
+    // Events carrying a top-level "id" require an explicit ACK before the
+    // server closes the WebSocket (terminal events: complete, kicked).
+    // Reply immediately; the state handler runs right after.
+    if (obj.contains("id")) {
+        const auto idValue = obj.value("id");
+        if (idValue.isDouble() && m_wsConnection) {
+            sendJsonMessage(Action::Ack(idValue.toInteger()).json());
+        }
+    }
+
+    m_state->processEventJson(obj);
 }
 
 void Session::onComplete(const QString &status)

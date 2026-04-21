@@ -11,6 +11,7 @@ Item {
     property string selectedProxy: appController.proxyType
     property string proxyHost: appController.proxyHost
     property int proxyPort: appController.proxyPort
+    property bool selectedAutoDropFreeze: appController.autoDropFreeze
 
     ColumnLayout {
         anchors.centerIn: parent
@@ -173,6 +174,48 @@ Item {
             }
         }
 
+        // Auto-drop freeze toggle — per-sender-session preference, persisted like the rest.
+        RowLayout {
+            Layout.fillWidth: true; spacing: 10
+
+            Rectangle {
+                id: autoDropBox
+                width: 20; height: 20; radius: 3
+                border.color: selectedAutoDropFreeze ? "#e94560" : "#0f3460"
+                border.width: selectedAutoDropFreeze ? 2 : 1
+                color: selectedAutoDropFreeze ? "#e94560" : "#16213e"
+                Text {
+                    anchors.centerIn: parent
+                    text: "✓"
+                    color: "#eee"; font.pixelSize: 14; font.bold: true
+                    visible: selectedAutoDropFreeze
+                }
+                MouseArea {
+                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                    onClicked: selectedAutoDropFreeze = !selectedAutoDropFreeze
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true; spacing: 2
+
+                Text {
+                    text: appController.t.autoDropFreezeLabel
+                    color: "#eee"; font.pixelSize: 13
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: selectedAutoDropFreeze = !selectedAutoDropFreeze
+                    }
+                }
+                Text {
+                    text: appController.t.autoDropFreezeHint
+                    color: "#777"; font.pixelSize: 11
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                }
+            }
+        }
+
         RowLayout {
             Layout.fillWidth: true; spacing: 12
 
@@ -183,7 +226,8 @@ Item {
                 MouseArea {
                     id: saveMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
                     onClicked: appController.saveSettings(urlInput.text.trim(), nameInput.text.trim(), selectedLang,
-                                                         selectedProxy, proxyHostInput.text.trim(), parseInt(proxyPortInput.text) || 0)
+                                                         selectedProxy, proxyHostInput.text.trim(), parseInt(proxyPortInput.text) || 0,
+                                                         selectedAutoDropFreeze)
                 }
             }
 

@@ -21,7 +21,10 @@ public:
     explicit Session(const QUrl &url, const QSharedPointer<QNetworkCookieJar> cookieJar, QObject *parent = nullptr);
 
     void join(const QString &id);
-    void create();
+    // If autoDropFreeze is true, the server drops the initial freeze on
+    // the first confirmed chunk and treats "last receiver left" as a
+    // successful completion. Sent as JSON body to POST /api/session/create.
+    void create(bool autoDropFreeze = false);
     SessionState *state() { return m_state; }
     const SessionState &getState() const { return *m_state; }
     const QString &getId() const { return m_id; }

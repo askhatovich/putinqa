@@ -104,6 +104,7 @@ void SessionState::processEventJson(const QJsonObject &event)
     else if (type == "chunks_unfrozen") onChunksUnfrozen();
     else if (type == "upload_finished") onUploadFinished();
     else if (type == "complete") onComplete(data);
+    else if (type == "kicked") onKicked();
     else if (type == "new_chunk_allowed") onNewChunkIsAllowed(data);
     else {
         qWarning().noquote() << "SessionState: unknown event:" << type;
@@ -327,6 +328,14 @@ void SessionState::onComplete(const QJsonObject &data)
 {
     const auto status = data.value("status").toString();
     emit complete(status);
+}
+
+void SessionState::onKicked()
+{
+    // Sent to a receiver the sender just removed, before the server
+    // closes the WS. Treated as a terminal event — report as "kicked"
+    // via the same complete signal.
+    emit complete(QStringLiteral("kicked"));
 }
 
 void SessionState::onNewChunkIsAllowed(const QJsonObject &data)

@@ -111,6 +111,10 @@ Organization: "askhatovich", Application: "putinqa"
 | `server/url` | `http://127.0.0.1:2233` | Server address for sending |
 | `user/name` | Random funny name + emoji | Display name |
 | `app/language` | System locale detection | "ru" or "en" |
+| `proxy/type` | `none` | `none`, `socks5`, or `http` |
+| `proxy/host` | empty | Proxy host |
+| `proxy/port` | `0` | Proxy port |
+| `session/auto_drop_freeze` | `false` | If true, sender sessions are created with `auto_drop_freeze: true` JSON body — server drops initial freeze on the first confirmed chunk and ends with `ok` when the last receiver leaves (fire-and-forget). Toggled via SettingsScreen.qml. |
 
 **Settings are inviolable:** Only changed explicitly via Settings screen. Runtime data (e.g., server URL from received link) never overwrites QSettings. `m_activeServer` is the temporary session server; `m_serverUrl` is the persistent setting.
 
